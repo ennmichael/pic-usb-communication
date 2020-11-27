@@ -1,11 +1,3 @@
-/*
-#ifdef NDEBUG
-#pragma config DEBUG = OFF
-#else
-#pragma config DEBUG = ON
-#endif//DEBUG
- */
-
 #pragma config FOSC = INTOSC
 #pragma config WDTE = OFF
 #pragma config PWRTE = OFF
@@ -41,7 +33,6 @@ void pinsSetup(void) {
 
 void i2cSetup(void) {
     SSPADD = 0x08;
-    SSPCON2bits.GCEN = 1;
     SSPCON1bits.SSPM = 0b0110;  // I2C Slave, 7 bits
     SSPCON1bits.SSPEN = 1;
     SSPCON3bits.AHEN = 0;
@@ -49,7 +40,6 @@ void i2cSetup(void) {
 }
 
 void interruptsSetup(void) {
-    PIE1bits.SSPIE = 1;
     INTCONbits.PEIE = 1;
     INTCONbits.GIE = 1;
 }
@@ -61,20 +51,22 @@ void hardwareSetup(void) {
     i2cSetup();
 }
 
-uint8_t sspif = 0;
 uint8_t buf = 0;
-
-void __interrupt() interruptHandler(void) {
-    sspif = 1;
-    buf = SSPBUF;
-    PORTDbits.RD1 = 1;
-}
 
 int main(void) {
     hardwareSetup();
     PORTDbits.RD1 = 0;
     for (;;) {
-        sspif = PIR1bits.SSPIF;
+        if (!SSPIF) {
+            continue;
+        }
+
+        // TODO Is it a read or a write? Figure out how this thing works
+
+        SSPIF = 0;
+        PORTDbits.RD1 = 1;
+        buf = SSPBUF;
+        ++buf;
     }
     return 0;
 }
