@@ -1,0 +1,16 @@
+clang
+-std=c99
+-I/opt/microchip/xc8/v2.30/pic/include
+-I/opt/microchip/xc8/v2.30/pic/include/c99
+-I/opt/microchip/xc8/v2.30/pic/include/proc
+-I/opt/microchip/xc8/v2.31/pic/include
+-I/opt/microchip/xc8/v2.31/pic/include/c99
+-I/opt/microchip/xc8/v2.31/pic/include/proc
+-D__XC8
+-D__PICC__
+-D_16F1937
+-D__PICCPRO__
+-DUSE_IDE_HELPER
+-Wall
+-Wextra
+-Wno-unknown-pragmas
