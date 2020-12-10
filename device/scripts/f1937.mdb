@@ -3,4 +3,5 @@ set poweroptions.powerenable false
 set system.yestoalldialog true
 hwtool pickit3 0
 set system.yestoalldialog false
+program build/device.elf
 

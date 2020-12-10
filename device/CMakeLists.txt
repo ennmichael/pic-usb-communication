@@ -1,14 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
-project(pic_playground C)
+project(device C)
 
 if (NOT ${CMAKE_C_COMPILER} MATCHES ".*xc8-cc.*")
     message(FATAL_ERROR "The project must be compiled with xc8-cc. Use -DCMAKE_C_COMPILER=/path/to/xc8-cc.")
 endif ()
 
-add_executable(pic_playground main.c)
-target_compile_options(pic_playground PUBLIC "-mcpu=pic16f1937")
-target_compile_options(pic_playground PUBLIC "-std=c99")
-target_compile_options(pic_playground PUBLIC "-mreserve=ram@0x320:0x32F")
-target_link_options(pic_playground PUBLIC "-mcpu=pic16f1937")
+set(SOURCES "main.c" "device.c" "led.c")
 
-add_custom_command(TARGET pic_playground PRE_LINK COMMAND cp main.c.p1 main.c.o WORKING_DIRECTORY CMakeFiles/pic_playground.dir/)
+add_executable(device ${SOURCES})
+target_compile_options(device PUBLIC "-mcpu=pic16f1937")
+target_compile_options(device PUBLIC "-std=c99")
+target_compile_options(device PUBLIC "-mreserve=ram@0x320:0x32F")
+target_link_options(device PUBLIC "-mcpu=pic16f1937")
+
+foreach (FILE ${SOURCES})
+    add_custom_command(TARGET device PRE_LINK COMMAND cp ${FILE}.p1 ${FILE}.o WORKING_DIRECTORY CMakeFiles/device.dir/)
+endforeach()
