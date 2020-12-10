@@ -34,7 +34,7 @@ void setup_pins(void) {
 
 void setup_i2c(void) {
     SSPADD = 0x08;
-    SSPCON1bits.SSPM = 0b1110;
+    SSPCON1bits.SSPM = 0b0110;
     SSPCON1bits.SSPEN = 1;
     SSPCON2bits.SEN = 1;
 }
@@ -64,9 +64,6 @@ void handle_i2c_transmission() {
         for (;;) {
         }
     }
-
-    SSPIF = 0;
-    (void)SSPBUF;
 
     for (;;) {
         if (!SSPIF) {
@@ -98,7 +95,8 @@ void handle_i2c_reception() {
     }
 
     SSPIF = 0;
-    (void)SSPBUF;
+    (void)SSPBUF;  // Clears the BF
+    SSPCON1bits.CKP = 1;
 
     for (;;) {
         if (!SSPIF) {
@@ -141,11 +139,7 @@ int main(void) {
         if (SSPSTATbits.R_nW) {
             handle_i2c_transmission();
         } else {
-            if (SSPBUF % 2 == 1) {
-                handle_i2c_transmission();
-            } else {
-                handle_i2c_reception();
-            }
+            handle_i2c_reception();
         }
     }
 
