@@ -22,7 +22,8 @@ typedef enum {
 } DeviceState;
 
 static DeviceState device_state = IDLE;
-static __eeprom uint8_t data[101];
+static uint8_t data[101] = {3, 1, 2, 3};
+static uint8_t returned_data[101];
 
 void device_receive(uint8_t byte) {
     static uint8_t receive_counter;
@@ -53,13 +54,18 @@ void device_receive(uint8_t byte) {
     }
 }
 
+static volatile uint8_t xnop = 0;
+
 uint8_t device_transmit() {
     static uint8_t transmit_counter = 0;
     uint8_t result = 0;
 
+    return data[transmit_counter++];
+
     switch (device_state) {
         case IN_LOAD_SEQUENCE:
             result = data[transmit_counter];
+            returned_data[transmit_counter] = result;
             if (transmit_counter == data[0]) {
                 transmit_counter = 0;
                 device_state = IDLE;
@@ -71,9 +77,7 @@ uint8_t device_transmit() {
             led_error();
             for (;;) {
             }
-            break;
+            return 0xFE;
     }
-
-    return 0xFF;
 }
 

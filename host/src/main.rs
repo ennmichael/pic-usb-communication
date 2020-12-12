@@ -1,18 +1,12 @@
 mod dev;
 mod util;
 
-use dev::RawDevice;
+use dev::Device;
 use libusb::Context;
 
 fn main() {
     let mut ctx = Context::new().unwrap();
-    let mut device = RawDevice::acquire(&mut ctx).unwrap();
-    device.write_message(&[0x07, 0x02, 0x03]).unwrap();
-    println!("{:?}", device.read_message(5).unwrap());
-    device
-        .write_message(&[0x69, 0x69, 0x69, 0x69, 0x69, 0x69, 0x69])
-        .unwrap();
-    println!("{:?}", device.read_message(5).unwrap());
-    println!("{:?}", device.read_message(5).unwrap());
-    println!("{:?}", device.read_message(5).unwrap());
+    let mut device = Device::acquire(&mut ctx).unwrap();
+    device.store(&[0x01, 0x02, 0x03]).unwrap();
+    println!("{:?}", device.load().unwrap());
 }

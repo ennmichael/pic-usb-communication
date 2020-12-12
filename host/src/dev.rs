@@ -42,9 +42,9 @@ pub struct Device<'a> {
 
 impl<'a> Device<'a> {
     pub fn acquire(ctx: &'a mut Context) -> Result<Device> {
-        Ok(Self {
-            raw_device: RawDevice::acquire(ctx)?,
-        })
+        let mut raw_device = RawDevice::acquire(ctx)?;
+        raw_device.set_speed_divider(0xFF)?;
+        Ok(Self { raw_device })
     }
 
     pub fn store(&mut self, data: &[u8]) -> Result<()> {
@@ -72,16 +72,14 @@ impl<'a> RawDevice<'a> {
         match ctx.open_device_with_vid_pid(VENDOR_ID, PRODUCT_ID) {
             Some(mut handle) => {
                 claim_hid_interface(&mut handle)?;
-                let mut device = RawDevice { handle };
-                device.set_speed()?;
-                Ok(device)
+                Ok(RawDevice { handle })
             }
             None => Err(Error::DeviceNotFound),
         }
     }
 
-    fn set_speed(&mut self) -> Result<()> {
-        self.write_interrupt(&[0x10, 0x00, 0x00, 0x20, 0xFF])?;
+    fn set_speed_divider(&mut self, div: u8) -> Result<()> {
+        self.write_interrupt(&[0x10, 0x00, 0x00, 0x20, div])?;
         let mut buf = [0; 64];
         self.read_interrupt(&mut buf)?;
         if buf[0] != 0x10 || buf[3] != 0x20 {
@@ -151,7 +149,6 @@ impl<'a> RawDevice<'a> {
             }
         }
 
-        println!("Read {:?}", buf);
         Ok(Vec::from(&buf[4..4 + buf[3] as usize]))
     }
 
@@ -159,13 +156,20 @@ impl<'a> RawDevice<'a> {
         let n = self
             .handle
             .read_interrupt(HID_INPUT_ENDPOINT, buf, COMMUNICATION_TIMEOUT)?;
+        Ok(())
+        /*
         if n != MESSAGE_BUFFER_SIZE {
+            println!(
+                "Error while reading: expected {} bytes, read {}",
+                MESSAGE_BUFFER_SIZE, n
+            );
             Err(Error::DeviceFailure(
                 "Error while reading: read unexpected number of bytes",
             ))
         } else {
             Ok(())
         }
+        */
     }
 
     fn check_response(&mut self) -> Result<bool> {

@@ -53,18 +53,15 @@ void setup_hardware(void) {
     setup_i2c();
 }
 
-static uint8_t write_counter = 0;
-static uint8_t read_counter = 0;
-static uint8_t test_data[100];
-
-static volatile uint8_t xnop = 0;
+volatile uint8_t mynop = 0;
 
 void main_loop() {
-    uint8_t address_read = 0;
+    uint8_t test = 3;
+    uint8_t address_received = 0;
 
     for (;;) {
         if (SSPSTATbits.P) {
-            address_read = 0;
+            address_received = 0;
         }
 
         if (!SSPIF) {
@@ -74,15 +71,18 @@ void main_loop() {
         SSPIF = 0;
         (void)SSPBUF;  // Clears BF
 
+        volatile uint8_t dna = SSPSTATbits.D_nA;
+
         if (SSPSTATbits.R_nW) {
-            SSPBUF = test_data[read_counter];
-            read_counter++;
-        } else {
-            if (address_read) {
-                test_data[write_counter] = SSPBUF;
-                write_counter++;
+            if (test == 4) {
+                mynop = 0;
             }
-            address_read = 1;
+            SSPBUF = test++;
+        } else {
+            if (address_received) {
+                device_receive(SSPBUF);
+            }
+            address_received = 1;
         }
 
         SSPCON1bits.CKP = 1;
@@ -91,14 +91,6 @@ void main_loop() {
 
 int main(void) {
     setup_hardware();
-
-    test_data[0] = 0x0F;
-    test_data[1] = 0x0E;
-    test_data[2] = 0x0D;
-    test_data[3] = 0x0C;
-    test_data[4] = 0x0B;
-    test_data[5] = 0x0A;
-
     main_loop();
 
     return 0;
