@@ -71,7 +71,9 @@ void main_loop() {
         SSPIF = 0;
         (void)SSPBUF;  // Clears BF
 
-        volatile uint8_t dna = SSPSTATbits.D_nA;
+        if (SSPSTATbits.D_nA && SSPCON2bits.ACKSTAT) {
+            continue;
+        }
 
         if (SSPSTATbits.R_nW) {
             if (test == 4) {
