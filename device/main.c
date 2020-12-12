@@ -53,10 +53,7 @@ void setup_hardware(void) {
     setup_i2c();
 }
 
-volatile uint8_t mynop = 0;
-
 void main_loop() {
-    uint8_t test = 3;
     uint8_t address_received = 0;
 
     for (;;) {
@@ -76,10 +73,7 @@ void main_loop() {
         }
 
         if (SSPSTATbits.R_nW) {
-            if (test == 4) {
-                mynop = 0;
-            }
-            SSPBUF = test++;
+            SSPBUF = device_transmit();
         } else {
             if (address_received) {
                 device_receive(SSPBUF);
