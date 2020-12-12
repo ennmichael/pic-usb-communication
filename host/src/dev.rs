@@ -132,7 +132,7 @@ impl<'a> RawDevice<'a> {
             let mut msg = [0; MESSAGE_BUFFER_SIZE];
             msg[0] = 0x91;
             msg[1] = len;
-            msg[3] = DEVICE_USB_ADDRESS + 1;
+            msg[3] = DEVICE_USB_ADDRESS;
             self.write_interrupt(&msg)?;
             if self.check_response()? {
                 break;

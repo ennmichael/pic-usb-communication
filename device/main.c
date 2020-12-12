@@ -37,6 +37,7 @@ void setup_i2c(void) {
     SSPCON1bits.SSPM = 0b0110;
     SSPCON1bits.SSPEN = 1;
     SSPCON2bits.SEN = 1;
+    SSPCON3bits.BOEN = 1;
 }
 
 void setup_interrupts(void) {
@@ -71,9 +72,9 @@ void handle_i2c_transmission() {
         }
 
         SSPIF = 0;
-        (void)SSPBUF;  // Clears the BF
+        (void)SSPBUF;  // Clears BF
 
-        if (SSPSTATbits.P || SSPCON2bits.ACKSTAT) {
+        if (SSPSTATbits.D_nA && SSPCON2bits.ACKSTAT) {
             break;
         }
 
@@ -88,17 +89,24 @@ void handle_i2c_transmission() {
 static volatile uint8_t counter = 0;
 
 void handle_i2c_reception() {
+    // XXX The bug is in here
+
     if (SSPSTATbits.S == 0) {
         led_error();
         for (;;) {
         }
     }
 
+    // The first byte is the address, which I don't care about.
     SSPIF = 0;
     (void)SSPBUF;  // Clears the BF
     SSPCON1bits.CKP = 1;
 
     for (;;) {
+        if (SSPSTATbits.P) {
+            break;
+        }
+
         if (!SSPIF) {
             continue;
         }
@@ -106,15 +114,9 @@ void handle_i2c_reception() {
         SSPIF = 0;
         (void)SSPBUF;  // Clears the BF
 
-        if (SSPSTATbits.P) {
-            break;
-        }
-
-        if (SSPSTATbits.D_nA) {
-            // device_receive(SSPBUF);
-            test_data[write_counter] = SSPBUF;
-            write_counter++;
-        }
+        // device_receive(SSPBUF);
+        test_data[write_counter] = SSPBUF;
+        write_counter++;
 
         SSPCON1bits.CKP = 1;
     }
@@ -129,7 +131,6 @@ int main(void) {
     test_data[3] = 0x0C;
     test_data[4] = 0x0B;
     test_data[5] = 0x0A;
-    test_data[6] = 0x09;
 
     for (;;) {
         if (!SSPIF) {
