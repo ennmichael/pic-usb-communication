@@ -59,14 +59,14 @@ static uint8_t test_data[100];
 
 static volatile uint8_t xnop = 0;
 
-void handle_i2c_transmission() {
-    if (SSPSTATbits.S == 0) {
-        led_error();
-        for (;;) {
-        }
-    }
+void main_loop() {
+    uint8_t address_read = 0;
 
     for (;;) {
+        if (SSPSTATbits.P) {
+            address_read = 0;
+        }
+
         if (!SSPIF) {
             continue;
         }
@@ -74,49 +74,16 @@ void handle_i2c_transmission() {
         SSPIF = 0;
         (void)SSPBUF;  // Clears BF
 
-        if (SSPSTATbits.D_nA && SSPCON2bits.ACKSTAT) {
-            break;
+        if (SSPSTATbits.R_nW) {
+            SSPBUF = test_data[read_counter];
+            read_counter++;
+        } else {
+            if (address_read) {
+                test_data[write_counter] = SSPBUF;
+                write_counter++;
+            }
+            address_read = 1;
         }
-
-        // SSPBUF = device_transmit();
-        SSPBUF = test_data[read_counter];
-        read_counter++;
-
-        SSPCON1bits.CKP = 1;
-    }
-}
-
-static volatile uint8_t counter = 0;
-
-void handle_i2c_reception() {
-    // XXX The bug is in here
-
-    if (SSPSTATbits.S == 0) {
-        led_error();
-        for (;;) {
-        }
-    }
-
-    // The first byte is the address, which I don't care about.
-    SSPIF = 0;
-    (void)SSPBUF;  // Clears the BF
-    SSPCON1bits.CKP = 1;
-
-    for (;;) {
-        if (SSPSTATbits.P) {
-            break;
-        }
-
-        if (!SSPIF) {
-            continue;
-        }
-
-        SSPIF = 0;
-        (void)SSPBUF;  // Clears the BF
-
-        // device_receive(SSPBUF);
-        test_data[write_counter] = SSPBUF;
-        write_counter++;
 
         SSPCON1bits.CKP = 1;
     }
@@ -132,17 +99,7 @@ int main(void) {
     test_data[4] = 0x0B;
     test_data[5] = 0x0A;
 
-    for (;;) {
-        if (!SSPIF) {
-            continue;
-        }
-
-        if (SSPSTATbits.R_nW) {
-            handle_i2c_transmission();
-        } else {
-            handle_i2c_reception();
-        }
-    }
+    main_loop();
 
     return 0;
 }
