@@ -1,5 +1,6 @@
 use crate::util;
 use libusb::{self, Context, DeviceHandle, Error as UsbError};
+use std::cmp;
 use std::fmt::{self, Display, Formatter};
 use std::time::Duration;
 
@@ -56,14 +57,12 @@ impl<'a> Device<'a> {
 
     pub fn load(&mut self) -> Result<Vec<u8>> {
         self.raw_device.write_message(&[0x00])?;
-        println!("Wrote 0");
         let len_message = self.raw_device.read_message(1)?;
-        println!("Device says {}", len_message[0]);
         Ok(self.raw_device.read_message(len_message[0])?)
     }
 }
 
-pub struct RawDevice<'a> {
+struct RawDevice<'a> {
     handle: DeviceHandle<'a>,
 }
 
@@ -89,23 +88,23 @@ impl<'a> RawDevice<'a> {
         }
     }
 
-    pub fn write_message(&mut self, data: &[u8]) -> Result<()> {
-        if data.len() > 20 {
-            unimplemented!()
-        } else {
+    pub fn write_message(&mut self, mut data: &[u8]) -> Result<()> {
+        let mut msg = [0; MESSAGE_BUFFER_SIZE];
+        msg[0] = 0x90;
+        msg[1] = data.len() as u8;
+        msg[3] = DEVICE_USB_ADDRESS;
+        while data.len() > 0 {
+            let n = cmp::min(60, data.len());
+            msg[4..4 + n].copy_from_slice(&data[..n]);
+            data = &data[n..];
             loop {
-                let mut raw_data = [0; 64];
-                raw_data[0] = 0x90;
-                raw_data[1] = data.len() as u8;
-                raw_data[3] = DEVICE_USB_ADDRESS;
-                raw_data[4..4 + data.len()].copy_from_slice(data);
-                self.write_interrupt(&raw_data)?;
+                self.write_interrupt(&msg)?;
                 if self.check_response()? {
                     break;
                 }
             }
-            Ok(())
         }
+        Ok(())
     }
 
     fn write_interrupt(&mut self, raw_data: &[u8]) -> Result<()> {
@@ -122,10 +121,6 @@ impl<'a> RawDevice<'a> {
     }
 
     pub fn read_message(&mut self, len: u8) -> Result<Vec<u8>> {
-        if len > 20 {
-            unimplemented!();
-        }
-
         loop {
             let mut msg = [0; MESSAGE_BUFFER_SIZE];
             msg[0] = 0x91;
@@ -137,27 +132,31 @@ impl<'a> RawDevice<'a> {
             }
         }
 
-        let mut buf = [0; MESSAGE_BUFFER_SIZE];
+        let mut result = Vec::new();
 
-        loop {
+        while result.len() != len as usize {
             let mut msg = [0; MESSAGE_BUFFER_SIZE];
+            let mut response = [0; MESSAGE_BUFFER_SIZE];
             msg[0] = 0x40;
-            self.write_interrupt(&msg)?;
-            self.read_interrupt(&mut buf)?;
-            if buf[1] == 0x00 {
-                break;
+            loop {
+                self.write_interrupt(&msg)?;
+                self.read_interrupt(&mut response)?;
+                if response[1] == 0x00 {
+                    break;
+                }
             }
+
+            let n = response[3] as usize;
+            result.extend(&response[4..4 + n]);
         }
 
-        Ok(Vec::from(&buf[4..4 + buf[3] as usize]))
+        Ok(result)
     }
 
     fn read_interrupt(&mut self, buf: &mut [u8]) -> Result<()> {
         let n = self
             .handle
             .read_interrupt(HID_INPUT_ENDPOINT, buf, COMMUNICATION_TIMEOUT)?;
-        Ok(())
-        /*
         if n != MESSAGE_BUFFER_SIZE {
             println!(
                 "Error while reading: expected {} bytes, read {}",
@@ -169,7 +168,6 @@ impl<'a> RawDevice<'a> {
         } else {
             Ok(())
         }
-        */
     }
 
     fn check_response(&mut self) -> Result<bool> {

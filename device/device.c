@@ -22,7 +22,7 @@ typedef enum {
 } DeviceState;
 
 static DeviceState device_state = IDLE;
-static __eeprom uint8_t data[101] = {3, 1, 2, 3};
+static uint8_t data[257];
 
 void device_receive(uint8_t byte) {
     static uint8_t receive_counter;

@@ -25,14 +25,14 @@
 #include "ide_helper.h"
 #include "led.h"
 
-void setup_oscillator(void) { OSCCONbits.IRCF = 0b1111; }
+static void oscillator_hardware_setup(void) { OSCCONbits.IRCF = 0b1111; }
 
-void setup_pins(void) {
+static void pins_hardware_setup(void) {
     TRISCbits.TRISC3 = 1;
     TRISCbits.TRISC4 = 1;
 }
 
-void setup_i2c(void) {
+static void i2c_hardware_setup(void) {
     SSPADD = 0x08;
     SSPCON1bits.SSPM = 0b0110;
     SSPCON1bits.SSPEN = 1;
@@ -40,20 +40,20 @@ void setup_i2c(void) {
     SSPCON3bits.BOEN = 1;
 }
 
-void setup_interrupts(void) {
+static void interrupts_hardware_setup(void) {
     INTCONbits.PEIE = 1;
     INTCONbits.GIE = 1;
 }
 
-void setup_hardware(void) {
+static void hardware_setup(void) {
     led_hardware_setup();
-    setup_oscillator();
-    setup_pins();
-    setup_interrupts();
-    setup_i2c();
+    oscillator_hardware_setup();
+    pins_hardware_setup();
+    interrupts_hardware_setup();
+    i2c_hardware_setup();
 }
 
-void main_loop() {
+static void main_loop() {
     uint8_t address_received = 0;
 
     for (;;) {
@@ -61,11 +61,11 @@ void main_loop() {
             address_received = 0;
         }
 
-        if (!SSPIF) {
+        if (!PIR1bits.SSPIF) {
             continue;
         }
 
-        SSPIF = 0;
+        PIR1bits.SSPIF = 0;
         (void)SSPBUF;  // Clears BF
 
         if (SSPSTATbits.D_nA && SSPCON2bits.ACKSTAT) {
@@ -86,8 +86,7 @@ void main_loop() {
 }
 
 int main(void) {
-    setup_hardware();
+    hardware_setup();
     main_loop();
-
     return 0;
 }
